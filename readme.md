@@ -1,26 +1,5 @@
-<!-- Improved compatibility of back to top link: See: https://github.com/othneildrew/Best-README-Template/pull/73 -->
 <a id="readme-top"></a>
-<!--
-*** Thanks for checking out the Best-README-Template. If you have a suggestion
-*** that would make this better, please fork the repo and create a pull request
-*** or simply open an issue with the tag "enhancement".
-*** Don't forget to give the project a star!
-*** Thanks again! Now go create something AMAZING! :D
--->
 
-
-
-<!-- PROJECT SHIELDS -->
-<!--
-*** I'm using markdown "reference style" links for readability.
-*** Reference links are enclosed in brackets [ ] instead of parentheses ( ).
-*** See the bottom of this document for the declaration of the reference variables
-*** for contributors-url, forks-url, etc. This is an optional, concise syntax you may use.
-*** https://www.markdownguide.org/basic-syntax/#reference-style-links
--->
-
-
-<!-- PROJECT LOGO -->
 <br />
 <div align="center">
   <img src="images/image.png" alt="Logo" style="border-radius: 10px" width="200" height="200">
@@ -67,9 +46,116 @@ For a quite some time i was developing this keypad, after finally completing thi
 * 4x M2,5x21mm screws
 * 6x M2,5x10mm screws
 * 4x Hex Nuts do M2,5 screws
+* Heat shrink tube
 
 > [!NOTE]
 > If you want to have full advantage of screw/nut hiding spots in case make sure that:
 > * Screw head has height of 1,5mm
 > * Nut has also height of 1,5mm
 > * Distance between parallel walls of the nut is not bigger than 5mm
+
+## Build Tutorial
+
+Let's jump into the tutorial, here I will show you how to build keypad. Whole build should not take you more than one day. **GOOD LUCK!**
+
+### 1. Circuit
+Circuit for this project is really straight forward
+
+![image](/images/image2.png)
+
+**Connections Explenation:**
+`GPIO 0` - RGB
+
+`GPIO 10 / GPIO 11` - Key A / Key B
+Each of those pins has also **1.2k Ohm Resistor** soldered inside & protected with heat shrink tube
+
+For Pico pinout i suggest using this website: https://picow.pinout.xyz/
+
+With connecting cables to FeatherWing things get a little confusing as they have their own way of naming pins:
+
+`D9` - RGB
+`D5 / D6` - - Key A / Key B
+
+Full pinout can be found on their github repo: [Adafruit Feather nRF52840 pinout.pdf](https://github.com/adafruit/Adafruit-nRF52-Bluefruit-Feather-PCB/blob/master/Adafruit%20Feather%20nRF52840%20pinout.pdf) I used nRF52840 as a refrence couse FeatherWing is created as a HAT for Adafruit microcontrollers. Make sure to connect everything as i described
+
+### 2. Program
+
+Before actually programming it we need to install **CircuitPython** on our pico
+
+To do that follow these steps:
+* [Download latest version](https://circuitpython.org/board/raspberry_pi_pico_w/) of CircuitPyhton for Pico W *(or normal pico if you don't have pico W)*
+* Connect pico via USB to your computer
+* Put `.uf2` file inside the folder and holde **BOOTSEL** button on the pico
+* When Pico will restart you should see some new files and folders inside it
+
+After that we need to install needed libs to pico to make sure everything will work, copy contents of **/code** directory of this repo to pico. This includes libs and keypad code:
+```py
+import time
+import board
+from digitalio import DigitalInOut, Pull
+from adafruit_debouncer import Debouncer
+import usb_hid
+from adafruit_hid.keyboard import Keyboard
+from adafruit_hid.keyboard_layout_us import KeyboardLayoutUS
+from adafruit_hid.keycode import Keycode
+import neopixel
+
+time.sleep(1)
+
+switch_a_output = Keycode.Z
+switch_b_output = Keycode.X
+
+#  Keyboard
+keyboard = Keyboard(usb_hid.devices)
+keyboard_layout = KeyboardLayoutUS(keyboard)
+
+# Key setup
+switch_a_in = DigitalInOut(board.GP10)
+switch_b_in = DigitalInOut(board.GP11)
+switch_a_in.pull = Pull.UP
+switch_b_in.pull = Pull.UP
+switch_a = Debouncer(switch_a_in)
+switch_b = Debouncer(switch_b_in)
+
+# NeoPixel setup
+WHITE = 0xCCCCCC
+BLACK = 0x000000
+ONE = 0xEC4899
+TWO = 0x8B5CF6
+
+pixel_pin = board.GP0
+pixels = neopixel.NeoPixel(pixel_pin, 2, brightness=1.0)
+pixels.fill(BLACK)
+time.sleep(0.3)
+pixels.fill(WHITE)
+time.sleep(0.3)
+pixels.fill(BLACK)
+time.sleep(0.3)
+pixels[0] = ONE
+pixels[1] = TWO
+
+last_position = encoder.position
+
+while True:
+    switch_a.update()
+    switch_b.update()
+
+    if switch_a.fell:
+        keyboard.press(switch_a_output)
+    if switch_a.rose:
+        keyboard.release(switch_a_output)
+
+    if switch_b.fell:
+        keyboard.press(switch_b_output)
+    if switch_b.rose:
+        keyboard.release(switch_b_output)
+```
+### 3. Program customization
+
+**Keys:**
+Keys can be customized using `switch_a_output` and `switch_b_output` vars, for example:
+```py
+switch_a_output = Keycode.A
+switch_b_output = Keycode.B
+```
+For more keycodes go here: https://docs.circuitpython.org/projects/hid/en/latest/api.html#adafruit-hid-keycode-keycode
